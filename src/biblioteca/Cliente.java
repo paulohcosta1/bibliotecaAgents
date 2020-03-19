@@ -73,42 +73,133 @@ public class Cliente extends Agent {
             @Override
             public void action() {
                 ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
-                msg.addReceiver(new AID("atendente", AID.ISLOCALNAME));
+                msg.addReceiver(new AID("atendente", AID.ISLOCALNAME)); //Precisa ser o mesmo nome que esta la nos argumentos
                 msg.setLanguage ("Português");
 
 
                 msg.setOntology(getLocalName());
                 System.out.println("CLIENTE " + getLocalName() + "  CHEGOU NO BALCAO DO ATENDENTE");
                 //AQUI ELE PEDE PRA CHECAR SE ESSES LIVROS ESTAO DISPONIVEIS
+                System.out.println(listaLivros);
+
+                    
+                    
+                for (int i = 0; i < listaLivros.size(); i++) {
+                    try {
+                        System.out.println("O LIVRO " + listaLivros.get(i) + " ESTA DISPONIVEL?");
+
+                        Thread.currentThread().sleep(1000);
+                        msg.setContent("O LIVRO " + listaLivros.get(i) + " ESTA DISPONIVEL?");
+
+                        myAgent.send(msg);
+
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
+                    }          
+                              
+                }
+            }
+
+        });
+         
+         addBehaviour (new CyclicBehaviour(this) {
+            public void action() {
+                ACLMessage msg = myAgent.receive();
+                if (msg != null){
+                    
+                    String content = msg.getContent();
+                    
+                    for (int i = 0; i < listaLivros.size(); i++) {
+                       
+                        if(content.equalsIgnoreCase("O LIVRO " + listaLivros.get(i) + "NAO ESTA DISPONIVEL")){ //padrao de resposta
+                            listaLivros.remove(i);                                    
+                        }
+                       
+                    }
+                    
+                    try{
+                        for (int i = 0; i < listaLivros.size(); i++) {
+
+                            Thread.currentThread().sleep(5000);
+                            if(listaLivros.size() == i){
+                                 System.out.println("O CLIENTE " + getLocalName() + "  FOI BUSCAR O LIVRO "+listaLivros.get(i) + "E VOLTOU PARA O ATENDENTE");
+                            }else{
+                               System.out.println("O CLIENTE " + getLocalName() + "  FOI BUSCAR O LIVRO "+listaLivros.get(i));
+                            }
+                                
+
+                        }
+                        
+                        ACLMessage msgAtendente = new ACLMessage(ACLMessage.INFORM);
+                        msgAtendente.addReceiver(new AID("atendente", AID.ISLOCALNAME));
+                        msgAtendente.setContent("cliente");
+                        myAgent.send(msgAtendente);
+                        
+                        
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    
+                    
+                }else{
+                    block();
+                }
+            }
+    });
+         
+         addBehaviour(new CyclicBehaviour(this) {
+
+            void atendimento() {
                 
                 try {
-                    Thread.currentThread().sleep(1000);
-                    msg.setContent("listalivro:" + listaLivros);
-                    System.out.println("CLIENTE  tem esses livros" + listaLivros );
+                    Thread.currentThread().sleep(1000);   
+                    
+                    
+                     for (int i = 0; i < listaLivros.size(); i++) {
 
-                    myAgent.send(msg);
+                            Thread.currentThread().sleep(3000);
+                            
+                            if(listaLivros.size() == i){
+                                 System.out.println("O CLIENTE " + getLocalName() + " ENTREGOU O ULTIMO LIVRO "+listaLivros.get(i) + " PARA DAR BAIXA E FOI PARA CASA");
+                            }else{
+                               System.out.println("O CLIENTE " + getLocalName() + "  ENTREGOU O  LIVRO "+listaLivros.get(i) + " PARA DAR BAIXA ");
+                            }
+                                
+
+                        }
+                   
+                        System.out.println("O CLIENTE " + getLocalName() + "ENTREGOU OS LIVROS PARA O ATENDENTE DAR BAIXA E FOI SAIU DA BIBLIOTECA");
+
+                        ACLMessage msgOperador = new ACLMessage(ACLMessage.INFORM);
+                        msgOperador.addReceiver(new AID("operador", AID.ISLOCALNAME));
+
+                        msgOperador.setContent("compras");
+                        myAgent.send(msgOperador);
+                   
+
+                    myAgent.doDelete();
 
                 } catch (InterruptedException ex) {
                     Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
                 }
 
-                              
-
             }
 
+            @Override
+            public void action() {
+
+                ACLMessage msgRecebida = myAgent.receive();
+                if (msgRecebida != null) {
+                    String conteudo = msgRecebida.getContent();
+
+                    if (conteudo.equalsIgnoreCase("suavez")) {
+                        atendimento();
+
+                    }
+
+                }
+            }
         });
-         
-//         addBehaviour (new CyclicBehaviour(this) {
-//            public void action() {
-//                ACLMessage msg = myAgent.receive();
-//                if (msg != null){
-//                    String content = msg.getContent();
-//                    System.out.println("--> " + msg.getSender().getName() + ":" + content);
-//                }else{
-//                    block();
-//                }
-//            }
-//    });
                 
                 
 

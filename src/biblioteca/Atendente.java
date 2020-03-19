@@ -22,7 +22,8 @@ public class Atendente extends Agent {
     protected void setup (){
         
         ArrayList<String> livrosDisponiveis;
-        
+        this.livrosDisponiveis = new ArrayList<String>(); 
+
         this.livrosDisponiveis.add("Dom Quixote");
         this.livrosDisponiveis.add("Guerra e Paz");
         this.livrosDisponiveis.add("A Montanha Mágica");
@@ -34,20 +35,23 @@ public class Atendente extends Agent {
             
         public void action ( ){
             ACLMessage msg = myAgent.receive();
-            
+
             if (msg != null ) {
+                             System.out.println(msg);
+
                 ACLMessage reply = msg.createReply();
                 String content = msg.getContent();
-                if (content.equalsIgnoreCase( "Fogo")){
-                    reply.setPerformative(ACLMessage.INFORM) ;
-                    reply.setContent("Recebi seu aviso! Obrigado por auxiliar meu serviço");
-                    myAgent.send(reply);
-                    System.out.println("O agente "+ msg.getSender().getName()+" avisou de um incêndio");
-                    System.out.println( "Vou ativar os procedimentos de combate ao incêndio!");
-                }else{
-                    block();
-                }
-                        
+               
+//                if (content.equalsIgnoreCase( "Fogo")){
+//                    reply.setPerformative(ACLMessage.INFORM) ;
+//                    reply.setContent("Recebi seu aviso! Obrigado por auxiliar meu serviço");
+//                    myAgent.send(reply);
+//                    System.out.println("O agente "+ msg.getSender().getName()+" avisou de um incêndio");
+//                    System.out.println( "Vou ativar os procedimentos de combate ao incêndio!");
+//                }else{
+//                    block();
+//                }
+//                        
         }  
         } // fim do a c t i on ( )
         }); // fim do addBehaviour ( )
