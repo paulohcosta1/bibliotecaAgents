@@ -24,12 +24,15 @@ import java.util.stream.Stream;
 
 /**
  *
- * @author paulohcosta
+ * @author paulohcosta,keony
  */
 public class Cliente extends Agent {
     
     ArrayList<String> listaLivros;
+
     ArrayList<String> livrosDisponiveis;
+    ArrayList<String> livrosEntrega;
+
     ArrayList<String> livrosNaoDisponiveis;
     List<String> todosLivros;
     
@@ -40,12 +43,20 @@ public class Cliente extends Agent {
      */
     protected void setup() {
         this.livrosDisponiveis = new ArrayList<String>(); 
+        this.livrosEntrega = new ArrayList<String>(); 
         this.listaLivros = new ArrayList<String>();        
         this.livrosNaoDisponiveis = new ArrayList<String>();        
         this.todosLivros = new ArrayList<String>();
         this.listaLivrosDisponiveis = new ArrayList<String>();
         
-        this.livrosDisponiveis.add("Dom Quixote");;
+        
+        
+        this.livrosEntrega.add("Mistborn");
+        this.livrosEntrega.add("A Caverna do Dragão");
+        this.livrosEntrega.add("A Arte da guerra");
+
+        
+        this.livrosDisponiveis.add("Dom Quixote");
         this.livrosDisponiveis.add("Guerra e Paz");
         this.livrosDisponiveis.add("A Montanha Mágica");
         this.livrosDisponiveis.add("Cem Anos de Solidão");
@@ -53,8 +64,6 @@ public class Cliente extends Agent {
         
        
         this.livrosNaoDisponiveis.add("O Iluminado");
-        this.livrosNaoDisponiveis.add("The Witcher");
-        this.livrosNaoDisponiveis.add("The Hobbit");
         
       
        this.todosLivros = Stream.of(this.livrosDisponiveis, this.livrosNaoDisponiveis)
@@ -71,6 +80,29 @@ public class Cliente extends Agent {
         };
          
         addBehaviour(new OneShotBehaviour(this) {
+            
+            void entregarLivros(){
+             ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+             msg.addReceiver(new AID("atendente", AID.ISLOCALNAME)); //Precisa ser o mesmo nome que esta la nos argumentos
+            
+             for (int i = 0; i < livrosEntrega.size(); i++) {
+                    try {
+                        System.out.println(getLocalName() + " DEVOLVEU O LIVRO " + livrosEntrega.get(i));
+                        
+                        msg.setContent("Devolveu: " + livrosEntrega.get(i));                        
+                        
+                        myAgent.send(msg);
+                        
+                        Thread.currentThread().sleep(3000);
+
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
+                    }          
+                              
+                }
+            }
+            
+            
             @Override
             public void action() {
                
@@ -79,15 +111,17 @@ public class Cliente extends Agent {
                 msg.setLanguage ("Português");
 
                 msg.setOntology(getLocalName());
-                System.out.println("CLIENTE " + getLocalName() + "  CHEGOU NO BALCAO DO ATENDENTE");
+                System.out.println( getLocalName() + "  CHEGOU NO BALCAO DO ATENDENTE");
                 //AQUI ELE PEDE PRA CHECAR SE ESSES LIVROS ESTAO DISPONIVEIS
+                
+                entregarLivros();
  
                     
                 for (int i = 0; i < listaLivros.size(); i++) {
                     try {
                         System.out.println("O LIVRO " + listaLivros.get(i) + " ESTA DISPONIVEL?");
 
-                        msg.setContent("Livro: " + listaLivros.get(i));
+                        msg.setContent("Livro: " + listaLivros.get(i) + "," +  listaLivros.size());
                         
                         myAgent.send(msg);
                         
@@ -113,14 +147,48 @@ public class Cliente extends Agent {
             }
             
             void buscarLivro(String livro) {
-                System.out.println("FOI BUSCAR O LIVRO " + livro);
+                livro = livro.replaceFirst("Livro: ", "");
+                ACLMessage pedirAjuda = new ACLMessage(ACLMessage.INFORM);
+                pedirAjuda.addReceiver(new AID("bibliotecario", AID.ISLOCALNAME));
+                pedirAjuda.setContent("Ajuda: "+livro);
+                myAgent.send(pedirAjuda);
+                
+                System.out.println(getLocalName() +" PEDIU AJUDA AO BIBLIOTECARIO PARA PEGAR O LIVRO " + livro);
             }
+            
+            void atendimento() {
+//                
+                try {
+                    Thread.currentThread().sleep(1000);   
+
+                    for (int i = 0; i < listaLivros.size(); i++) {
+
+                        Thread.currentThread().sleep(1000);
+                        int livroIndex = listaLivros.indexOf(listaLivros.get(i)) + 1;
+
+                        if(listaLivros.size() == livroIndex){
+                             System.out.println(getLocalName() + " ENTREGOU O ULTIMO LIVRO "+listaLivros.get(i) + " PARA DAR BAIXA AO ATENDENTE E FOI PARA CASA");
+                        }else{
+                           System.out.println(getLocalName() + "  ENTREGOU O  LIVRO "+listaLivros.get(i) + " PARA DAR BAIXA AO ATENDENTE ");
+                        }                               
+
+                    } 
+                     
+                    myAgent.doDelete();
+
+
+
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
+                }
+
+            };
             
             public void action() {
                 ACLMessage msg = myAgent.receive();
                 if (msg != null){
                     String content = msg.getContent();
-                  if(content != null && content.contains("Livro")) {
+                  if(content.contains("Livro")) {
                     try {
                         Thread.currentThread().sleep(3000);
                         buscarLivro(content);
@@ -130,95 +198,39 @@ public class Cliente extends Agent {
                       
                   } else if (content.contains("sugestao")) {
                     sugestao();
+                  }else if(content.contains("Entrega")){
+                      content = content.replaceFirst("Entrega: ", "");
+                      
+                      int livroIndex = listaLivros.indexOf(content);
+                      
+                      if(livroIndex == -1){ //CASO TIVER SUGESTAO, ELE ADD NO ARRAY
+                          listaLivros.add(content);
+                      }
+                    
+                      
+                      if(listaLivros.size() == (livroIndex+1)){
+                          
+                        ACLMessage pedirSugestao = new ACLMessage(ACLMessage.INFORM);
+                        pedirSugestao.addReceiver(new AID("atendente", AID.ISLOCALNAME));
+                        pedirSugestao.setContent("atendimento");
+                        myAgent.send(pedirSugestao);
+                          
+                        System.out.println("BIBLIOTECARIO ENTREGOU O LIVRO  " + content + " E O CLIENTE FOI PARA O ATENDIMENTO");
+                      }else{
+                        System.out.println("BIBLIOTECARIO ENTREGOU O LIVRO  " + content);
+                      }
+
+
+                  }else if(content.equalsIgnoreCase("suavez")) {
+                      atendimento();
+                      
                   }
 
-//                    
-//                    if(listaLivrosDisponiveis.size() > 0) {
-//                        try{
-//                            for (int i = 0; i < listaLivrosDisponiveis.size(); i++) {
-//
-//                                Thread.currentThread().sleep(5000);
-//                                if(listaLivrosDisponiveis.size() == i){
-//                                    System.out.println("O CLIENTE " + getLocalName() + "  FOI BUSCAR O LIVRO "+listaLivrosDisponiveis.get(i) + "E VOLTOU PARA O ATENDENTE");
-//                                }else{
-//                                   System.out.println("O CLIENTE " + getLocalName() + "  FOI BUSCAR O LIVRO "+listaLivrosDisponiveis.get(i));
-//                                }
-//                            }
-//
-////                            ACLMessage msgAtendente = new ACLMessage(ACLMessage.INFORM);;
-////                            msgAtendente.addReceiver(new AID("atendente", AID.ISLOCALNAME));
-//    //                        msgAtendente.setContent("cliente");
-////                            myAgent.send(msgAtendente);;
-//
-//
-//                        } catch (InterruptedException ex) {
-//                            Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
-//                        }
-//                    } else {
-//                        System.out.println("CHEGOU NO ELZA");
-//                    }
-//                    
-//                }else{
-//                    block();
                 }
             }
-    });
-         
-//         
-//         addBehaviour(new CyclicBehaviour(this) {
-//
-//            void atendimento() {
-//                
-//                try {
-//                    Thread.currentThread().sleep(1000);   
-//                    
-//                    
-//                     for (int i = 0; i < listaLivros.size(); i++) {
-//
-//                            Thread.currentThread().sleep(3000);
-//                            
-//                            if(listaLivros.size() == i){
-//                                 System.out.println("O CLIENTE " + getLocalName() + " ENTREGOU O ULTIMO LIVRO "+listaLivros.get(i) + " PARA DAR BAIXA E FOI PARA CASA");
-//                            }else{
-//                               System.out.println("O CLIENTE " + getLocalName() + "  ENTREGOU O  LIVRO "+listaLivros.get(i) + " PARA DAR BAIXA ");
-//                            }
-//                                
-//
-//                        }
-//                   
-//                        System.out.println("O CLIENTE " + getLocalName() + "ENTREGOU OS LIVROS PARA O ATENDENTE DAR BAIXA E FOI SAIU DA BIBLIOTECA");
-//
-//                        ACLMessage msgOperador = new ACLMessage(ACLMessage.INFORM);
-//                        msgOperador.addReceiver(new AID("operador", AID.ISLOCALNAME));
-//
-//                        msgOperador.setContent("compras");
-//                        myAgent.send(msgOperador);
-//                   
-//
-//                    myAgent.doDelete();
-//
-//                } catch (InterruptedException ex) {
-//                    Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
-//                }
-//
-//            };
-//
-//            @Override
-//            public void action() {
-//
-//                ACLMessage msgRecebida = myAgent.receive();
-//                if (msgRecebida != null) {
-//                    String conteudo = msgRecebida.getContent();
-//
-//                    if (conteudo.equalsIgnoreCase("suavez")) {
-//                        atendimento();
-//
-//                    }
-//
-//                }
-//            }
-//        });
-//                
+    });         
+
+                
                 
     };
 }
